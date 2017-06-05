@@ -1,0 +1,1362 @@
+﻿@{
+    ViewBag.Title = "Наши животные";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Scripts {
+    <script>
+        var model = {
+            splashScreen: ko.observable(true),
+
+            animals: ko.observableArray(),
+
+            paging: {
+                paginated: ko.observableArray(),
+                pages: ko.observableArray(),
+                totalPages: ko.observable(),
+                itemsPerPage: 10 // Максимальное кол-во животных, выводимое в списке на одной странице
+            },
+            // Выводим пользователю информацию - сколько животных в БД
+            amountOfAminals: ko.observable(),
+
+            editor: {
+                name: ko.observable(""),
+                AnimalId: ko.observable(""),
+                // выбранный цвет шкуры - ничего не выбираем по умолчанию
+                selectedSkinId: ko.observable(),
+                // выбранный вид - ничего не выбираем по умолчанию
+                selectedKindId: ko.observable(),
+                // выбранное местоположение - ничего не выбираем по умолчанию
+                selectedLocationId: ko.observable(),
+                // выбранные регионы - ничего не выбираем по умолчанию
+                selectedRegionsIds: ko.observableArray(),
+
+                // Заголовок для добавления или редактирования
+                captionText: ko.observable()
+            },
+
+            filter: {
+                // выбранный цвет шкуры
+                selectedSkinId: ko.observable(0),
+                // выбранный вид
+                selectedKindId: ko.observable(0),
+                // выбранные регионы
+                selectedRegionsIds: ko.observableArray(),
+
+                // радиокнопка ВСЕ ЦВЕТА ШКУРЫ
+                hasSkinsToFilter: ko.observable("optNotFilterSkins"),
+
+                // радиокнопка ВСЕ ВИДЫ ЖИВОТНЫХ
+                hasKindsToFilter: ko.observable("optNotFilterKinds"),
+
+                // радиокнопка ВСЕ РЕГИОНЫ
+                hasRegionsToFilter: ko.observable("optNotFilterRegions"),
+
+                // Заголовок для вывода пользоваиелю условий фильтрации
+                captionText: ko.observable(),
+
+                // Фильтрация - включена???
+                filterOn: false
+            },
+
+            // сообщение пользователю о добавлении / изменении / удалении животного
+            message: {
+
+                deltime: 0, // timer ID
+                shouldShowMessage: ko.observable(false), // Message initially invisible
+
+                // Текст, выводимый пользователю
+                messageText: ko.observable("Нажмите на кнопку <b>X</b> если хотите <b>закрыть</b> это окно")
+            },
+
+            // сообщение пользователю о возникших ошибках
+            errors: {
+
+                // deltime: 0, // timer ID
+                shouldShowMessage: ko.observable(false), // Message initially invisible
+
+                // Текст, выводимый пользователю
+                messageText: ko.observable("Нажмите на кнопку <b>X</b> если хотите <b>закрыть</b> это окно")
+            },
+
+            // подтверждение от пользователя об удалении животного
+            delete: {
+
+                // Данные удаляемого животного
+                //
+                AnimalId: ko.observable(),
+                AnimalName: ko.observable(),
+                SkinColor: ko.observable(),
+                AnimalKind: ko.observable(),
+                LocationName: ko.observable(),
+                RegionsNames: ko.observable(),
+            },
+
+            // список цветов шкуры
+            skins: ko.observableArray(),
+            // список видов
+            kinds: ko.observableArray(),
+            // список местоположений
+            locations: ko.observableArray(),
+            // список регионов
+            regions: ko.observableArray(),
+
+
+            // первоначально выводим только панель "Список животных"
+            displaySummary: ko.observable(1),
+        };
+
+        // обработчик клика по кнопке ЗАКРЫТЬ СООБЩЕНИЕ
+        //
+        function handleCloseMessageClick() {
+            // Скрываем окошко с сообщением пользователю
+            model.message.shouldShowMessage(false); // ... now it's hidden
+
+            // Очищает поле сообщения
+            model.message.messageText("");
+        }
+
+        // обработчик клика по кнопке ЗАКРЫТЬ СООБЩЕНИЕ ОБ ОШИБКЕ
+        //
+        function handleCloseErrorsMessageClick() {
+            // Скрываем окошко с сообщением пользователю
+            model.errors.shouldShowMessage(false); // ... now it's hidden
+
+            // Очищает поле сообщения
+            model.errors.messageText("");
+        }
+
+        // обработчик клика по кнопке ОТМЕНИТЬ УДАЛЕНИЕ ЖИВОТНОГО
+        //
+        function handleCancelDeleteAnimalClick() {
+
+            // Очищаем данные для удаляемого животного
+            model.delete.AnimalId();
+            model.delete.AnimalName();
+            model.delete.SkinColor();
+            model.delete.AnimalKind();
+            model.delete.LocationName();
+            model.delete.RegionsNames();
+
+
+            // показываем панель - Список животных
+            model.displaySummary(1);
+            // Отображаем 1-ую страницу из списка животных
+            showPage(1);
+        }
+
+        // обработчик клика по кнопке ПОДТВЕРДИТЬ УДАЛЕНИЕ ЖИВОТНОГО
+        //
+        function handleConfirmDeleteAnimalClick() {
+
+            // alert("model.delete.AnimalId = " + model.delete.AnimalId());
+            model.splashScreen(true);
+
+            sendAjaxRequest("DELETE",
+
+            function () {
+                // show splash screen
+                model.splashScreen(true);
+
+                if (model.filter.filterOn)
+                    handleApplyFilterClick();
+                else
+                    getAnimals();
+
+                // Вывожу для пользователя подтверждение
+                //
+                // окошко с сообщением пользователю
+                model.message.shouldShowMessage(true);
+
+
+                // Очищает поле сообщения
+                model.message.messageText("Животное: <b>" + model.delete.AnimalName() + "</b> - было успешно <b>удалено</b> из базы данных.");
+                
+                // запускаем таймер, автоматически закрывающий поле с текстом сообщения через 9 секунд
+                //
+                clearTimeout(model.message.deltime);
+                model.message.deltime = setTimeout(handleCloseMessageClick, 9000);
+
+                // Очищаем данные для удаляемого животного
+                model.delete.AnimalId();
+                model.delete.AnimalName();
+                model.delete.SkinColor();
+                model.delete.AnimalKind();
+                model.delete.LocationName();
+                model.delete.RegionsNames();
+
+
+                // показываем панель - Список животных
+                model.displaySummary(1);
+                // Отображаем 1-ую страницу из списка животных
+                showPage(1);
+
+            }, null, model.delete.AnimalId());
+        }
+
+        // вспомогательня функция - запуск указанного HTTP метода AJAX
+        //
+        function sendAjaxRequest(httpMethod, callback, controller, url, reqData) {
+
+            // show splash screen
+            model.splashScreen(true);
+
+            $.ajax("/api/" + (controller ? controller : "animals") + (url ? "/" + url : ""), {
+                type: httpMethod,
+                success: callback,
+                beforeSend: function () {
+
+                    // show splash screen
+                    model.splashScreen(true);
+
+                    // Скрываем окошко с сообщением пользователю
+                    model.errors.shouldShowMessage(false);
+                    // Очищает поле сообщения
+                    model.errors.messageText("");
+                },
+                error: function (jxqr, error, status) {
+
+                    // hide splash screen
+                    model.splashScreen(false);
+
+                    ShowErrors(jxqr, error, status);
+                },
+                always: function () {
+                    //// hide splash screen
+                    //model.splashScreen(false);
+                },
+                data: reqData
+            });
+        }
+
+        //   Вывод возникших ошибок
+        //
+        function ShowErrors(jxqr, error, status) {
+
+            // парсинг json-объекта
+            var response = jQuery.parseJSON(jxqr.responseText);
+
+            var msg = "<h4>" + response['Message'] + "</h4>";
+
+            //  добавляем общие ошибки модели
+            if (response['ModelState'] && response['ModelState']['animal']) {
+                $.each(response['ModelState']['animal'], function (index, item) {
+                    msg += "<p>" + item + "</p>";
+                });
+            }
+
+            //  добавляем общие ошибки модели
+            if (response['ModelState'] && response['ModelState']['animalLight']) {
+                $.each(response['ModelState']['animalLight'], function (index, item) {
+                    msg += "<p>" + item + "</p>";
+                });
+            }
+
+            // добавляем ошибки свойства AnimalName
+            if (response['ModelState'] && response['ModelState']['animal.AnimalName']) {
+                $.each(response['ModelState']['animal.AnimalName'], function (index, item) {
+                    msg += "<p>" + item + "</p>";
+                });
+            }
+
+            // окошко с сообщением пользователю
+            model.errors.shouldShowMessage(true);
+
+            // Очищает поле сообщения
+            model.errors.messageText(msg);
+        }
+
+        // Населяем животными массив model.animals
+        //
+        function populateAnimalsData(data) {
+            model.animals.removeAll();
+
+            for (var i = 0; i < data.length; i++) {
+                var animal = {}, skinColor = '', animalKind = '', locationName = '';
+
+                animal.AnimalId = data[i].AnimalId;
+                animal.AnimalName = data[i].AnimalName;
+
+                animal.SkinId = data[i].SkinId;
+                animal.KindId = data[i].KindId;
+                animal.LocationId = data[i].LocationId;
+                animal.RegIds = data[i].RegIds;
+
+                for (var k = 0; k < model.skins().length; k++) {
+                    if (model.skins()[k].Id == animal.SkinId) {
+                        skinColor = model.skins()[k].SkinColor;
+                        break;
+                    }
+                }
+                animal.SkinColor = skinColor;
+
+                for (var k = 0; k < model.kinds().length; k++) {
+                    if (model.kinds()[k].Id == animal.KindId) {
+                        animalKind = model.kinds()[k].AnimalKind;
+                        break;
+                    }
+                }
+                animal.AnimalKind = animalKind;
+
+                for (var k = 0; k < model.locations().length; k++) {
+                    if (model.locations()[k].Id == animal.LocationId) {
+                        locationName = model.locations()[k].LocationName;
+                        break;
+                    }
+                }
+                animal.LocationName = locationName;
+
+                var regIds = data[i].RegIds;
+                var regions = "";
+
+                for (var k = 0; k < regIds.length; k++) {
+
+                    for (var m = 0; m < model.regions().length; m++) {
+                        if (model.regions()[m].Id == regIds[k]) {
+
+                            regions += model.regions()[m].RegionName;
+                            break;
+                        }
+                    }
+                    if (regions && k < regIds.length - 1)
+                        regions += ", ";
+                }
+                animal.RegionsNames = regions;
+
+                model.animals.push(animal);
+            }
+
+            // pagination
+            //
+            model.paging.totalPages = Math.floor((model.animals().length - 1) / model.paging.itemsPerPage) + 1;
+
+            model.paging.pages.removeAll();
+            for (var i = 0; i < model.paging.totalPages; i++) {
+                var curNumber = Number(i) + 1;
+                model.paging.pages.push(curNumber);
+            }
+        }
+
+
+        // Загружаем список животных в model.animals
+        //
+        function getAnimals() {
+
+            // show splash screen
+            model.splashScreen(true);
+
+            sendAjaxRequest("GET", function (data) {
+
+                // show splash screen
+                model.splashScreen(true);
+
+                // населяем животными массив model.animals
+                //
+                populateAnimalsData(data);
+
+                // Отображаем 1-ую страницу из списка животных
+                showPage(1);
+
+                //  Выводим пользователю информацию - сколько животных в БД
+                var amountInfo = "В базе данных содержится <b>" + model.animals().length + "</b> животных(-ое):";
+                model.amountOfAminals(amountInfo);
+
+                // hide splash screen
+                model.splashScreen(false);
+            });
+        }
+
+
+        // Отображаем определенную страницу при разбиении на страницы или выводим отфильтрованные данные
+        //
+        function showPage(page) {
+            model.paging.paginated.removeAll();
+
+            // разбиваем данные на страницы с применения фильтра
+            //
+            if (model.filter.filterOn) {
+
+                var foundedAmount = model.animals().length;
+
+                // Выводим для пользователя текст текущих условий фильтрации
+                //
+                var filterInfo2 = "<b>Фильтр</b>: ";
+
+                if (model.filter.hasSkinsToFilter() == "optNotFilterSkins") {
+
+                    // Если выбрана радиокнопка ВСЕ ЦВЕТА ШКУРЫ
+                    //
+                    filterInfo2 += "цвет: <b>Все цвета</b>";
+                } else {
+                    filterInfo2 += "цвет: <b>" + model.skins()[model.filter.selectedSkinId - 1].SkinColor + "</b>";
+                }
+
+                // if (Number(model.filter.selectedKindId) >= 0) {
+                if (model.filter.hasKindsToFilter() == "optNotFilterKinds") {
+
+                    // Если выбрана радиокнопка ВСЕ ВИДЫ ЖИВОТНЫХ
+                    //
+                    filterInfo2 += ", вид: <b>Все виды</b>";
+                } else {
+                    filterInfo2 += ", вид: <b>" + model.kinds()[model.filter.selectedKindId - 1].AnimalKind + "</b>";
+                }
+
+                var filterInfo5 = "";
+                if (model.filter.hasRegionsToFilter() == "optNotFilterRegions") {
+
+                    // Если выбрана радиокнопка ВСЕ РЕГИОНЫ
+                    //
+                    filterInfo5 = "Все регионы";
+                } else {
+                    if (model.filter.selectedRegionsIds().length > 0) {
+
+                        for (var kk = 0; kk < model.filter.selectedRegionsIds().length; kk++) {
+
+                            // regions
+                            filterInfo5 += model.regions()[model.filter.selectedRegionsIds()[kk] - 1].RegionName;
+
+                            if (kk < model.filter.selectedRegionsIds().length - 1)
+                                filterInfo5 += ", ";
+                        }
+                    }
+                }
+
+                filterInfo2 += ", регионы: <b>" + filterInfo5 + "</b>";
+
+                var filterInfo6 = "";
+                if (foundedAmount)
+                    filterInfo2 += " - найдено <b>" + foundedAmount + "</b> животных(-ое)";
+                else
+                    filterInfo2 += " - не найдено <b>ни одного</b> животного";
+
+                //
+                model.filter.captionText(filterInfo2);
+            }
+
+            // разбиваем данные на страницы
+            //
+            for (var j = 0; j < model.animals().length; j++) {
+                if (j >= model.paging.itemsPerPage * (page - 1) && j < model.paging.itemsPerPage * page)
+                    model.paging.paginated.push(model.animals()[j]);
+            }
+
+            // меняем цвет у кнопки для выбранной страницы
+            //
+            $(".pagination li").removeClass("active");
+            $(".pagination li:contains('" + page + "')").addClass("active");
+        }
+
+        // Загружаем список цветов шкур в model.skins
+        //
+        function getSkins() {
+
+            sendAjaxRequest("GET", function (data) {
+
+                // show splash screen
+                model.splashScreen(true);
+
+                model.skins.removeAll();
+                for (var i = 0; i < data.length; i++) {
+
+                    model.skins.push(data[i]);
+                }
+
+                // Загружаем список видов животных
+                getKinds();
+
+            }, 'skins');
+        }
+
+        // Загружаем список видов животных в model.kinds
+        //
+        function getKinds() {
+
+            sendAjaxRequest("GET", function (data) {
+
+                // show splash screen
+                model.splashScreen(true);
+
+                model.kinds.removeAll();
+                for (var i = 0; i < data.length; i++) {
+
+                    model.kinds.push(data[i]);
+                }
+                // Загружаем список местоположений
+                getLocations();
+
+            }, 'kinds');
+        }
+
+        // Загружаем список местоположений в model.locations
+        //
+        function getLocations() {
+
+            sendAjaxRequest("GET", function (data) {
+
+                // show splash screen
+                model.splashScreen(true);
+
+                model.locations.removeAll();
+                for (var i = 0; i < data.length; i++) {
+
+                    model.locations.push(data[i]);
+                }
+                // Загружаем список регионов
+                getRegions();
+
+            }, 'locations');
+        }
+
+        // Загружаем список регионов в model.regions
+        //
+        function getRegions() {
+
+            sendAjaxRequest("GET", function (data) {
+
+                // show splash screen
+                model.splashScreen(true);
+
+                model.regions.removeAll();
+                for (var i = 0; i < data.length; i++) {
+
+                    model.regions.push(data[i]);
+                }
+
+                // В обработчике клика по кнопке СБРОСИТЬ ФИЛЬТР - сбрасываем фильтр и загружаем всех животных
+                //
+                handleCancelFilterClick();
+
+            }, 'regions');
+        }
+
+        // Обработчик клика по кнопарю РЕДАКТИРОВАТЬ
+        //
+        function editItem(item) {
+
+            for (var i = 0; i < model.animals().length; i++) {
+                if (model.animals()[i].AnimalId == item.AnimalId) {
+
+                    model.editor.AnimalName = item.AnimalName;
+                    model.editor.AnimalId = item.AnimalId;
+
+                    //  выбранный цвет шкуры животного - как текущий SkinId
+                    model.editor.selectedSkinId = item.SkinId;
+
+                    //  выбранный вид животного - как текущий KindId
+                    model.editor.selectedKindId = item.KindId;
+
+                    //  выбранное местоположение - как текущий LocationId
+                    model.editor.selectedLocationId = item.LocationId;
+
+                    // выбранные регионы - как текущий RegionId и следующий RegionId
+                    model.editor.selectedRegionsIds.removeAll();
+                    for (var m = 0; m < item.RegIds.length; m++) {
+                        model.editor.selectedRegionsIds.push(item.RegIds[m]); // item.Regions;
+                    }
+
+                    model.editor.captionText("Редактирование выбранного животного");
+
+                    // показываем панель - Редактирование
+                    model.displaySummary(2);
+
+                    break;
+                }
+            }
+        }
+
+        // обработчик клика по кнопке ПОКАЗАТЬ ФИЛЬТР
+        //
+        function filterItem() {
+
+            // показываем панель - Фильтр
+            model.displaySummary(3);
+        }
+
+        // обработчик клика по кнопке ПРИМЕНИТЬ ФИЛЬТР
+        //
+        function handleApplyFilterClick() {
+
+            // Скрываем окошко с сообщением пользователю
+            model.errors.shouldShowMessage(false);
+            // Очищает поле сообщения
+            model.errors.messageText("");
+
+            var skinId = 0;
+
+            // Если выбрана радиокнопка Виды животных, выбранные из списка
+            //
+            if (model.filter.hasSkinsToFilter() == "optApplyFilterSkins") {
+                skinId = model.filter.selectedSkinId;
+            }
+
+            var kindId = 0;
+            // Если выбрана радиокнопка Виды животных, выбранные из списка
+            //
+            if (model.filter.hasKindsToFilter() == "optApplyFilterKinds") {
+                kindId = model.filter.selectedKindId;
+            }
+
+            var regions = [];
+            // Если выбрана радиокнопка ВСЕ РЕГИОНЫ
+            //
+            if (model.filter.hasRegionsToFilter() == "optNotFilterRegions") {
+                regions = [0];
+            } else {
+
+                for (var k = 0; k < model.filter.selectedRegionsIds().length; k++) {
+                    regions.push(model.filter.selectedRegionsIds()[k]);
+                }
+
+                // выводим предупреждение - если не выбрано ни одного региона
+                //
+                if (model.filter.selectedRegionsIds().length == 0) {
+
+                    // окошко с сообщением пользователю
+                    model.errors.shouldShowMessage(true);
+
+                    // Очищает поле сообщения
+                    model.errors.messageText("<h4>Ошибка:</h4><p>Необходимо выбрать как минимум один регион из списка регионов!</p>");
+
+                    // показываем панель - Фильтр
+                    model.displaySummary(3);
+                    return;
+                }                
+            }
+
+            // show splash screen
+            model.splashScreen(true);
+
+            // Производим фильтрацию животных в бэкэнде
+            //
+            sendAjaxRequest("POST", function (data) {
+
+                // show splash screen
+                model.splashScreen(true);
+
+                // устанавливаем флаг filterOn
+                model.filter.filterOn = true;
+
+                // населяем животными массив model.animals
+                //
+                populateAnimalsData(data);
+
+                // показываем панель - Список животных
+                model.displaySummary(1);
+
+                // Отображаем 1-ую страницу из списка животных
+                showPage(1);
+
+                // hide splash screen
+                model.splashScreen(false);
+
+            }, null, 'filter', {
+                SkinId: skinId, // model.filter.selectedSkinId,
+                KindId: kindId, // model.filter.selectedKindId,
+                // RegionsIds: regions // model.editor.selectedRegionsIds
+                RegIds: regions
+            });
+        }
+
+
+        // обработчик клика по кнопке СБРОСИТЬ ФИЛЬТР
+        //
+        function handleCancelFilterClick() {
+
+            // устанавливаем флаг filterOn
+            model.filter.filterOn = false;
+
+            // выбранный цвет шкуры
+            model.filter.selectedSkinId = 0;
+            // выбранный вид
+            model.filter.selectedKindId = 0;
+
+            // выбранные регионы
+            model.filter.selectedRegionsIds.removeAll();
+            model.filter.selectedRegionsIds.push(+1);
+
+            // выбрана радиокнопка - ВСЕ ЦВЕТА ШКУРЫ
+            model.filter.hasSkinsToFilter("optNotFilterSkins");
+
+            // выбрана радиокнопка - ВСЕ ВИДЫ ЖИВОТНЫХ
+            model.filter.hasKindsToFilter("optNotFilterKinds");
+
+            // выбрана радиокнопка - ВСЕ РЕГИОНЫ
+            model.filter.hasRegionsToFilter("optNotFilterRegions");
+
+
+            // Скрываем окошко с сообщением пользователю
+            model.errors.shouldShowMessage(false);
+            // Очищает поле сообщения
+            model.errors.messageText("");
+
+            // Загружаем список животных
+            getAnimals();
+
+            // показываем панель - Список животных
+            model.displaySummary(1);
+
+            // Отображаем 1-ую страницу из списка животных
+            showPage(1);
+        }
+
+
+        // Обработчик клика по кнопке УДАЛИТЬ
+        //
+        function removeItem(item) {
+
+            // Скрываем окошко с сообщением пользователю
+            model.message.shouldShowMessage(false);
+            // Очищает поле сообщения
+            model.message.messageText("");
+
+            // Данные удаляемого животного
+            //
+            model.delete.AnimalId(item.AnimalId);
+            model.delete.AnimalName(item.AnimalName);
+            model.delete.SkinColor(item.SkinColor);
+            model.delete.AnimalKind(item.AnimalKind);
+            model.delete.LocationName(item.LocationName);
+            model.delete.RegionsNames(item.RegionsNames);
+
+            // показываем панель - Подтверждение об удалении животного
+            model.displaySummary(4);
+        }
+
+        // обработчик клика по кнопке ДОБАВИТЬ
+        //
+        function handleCreateClick() {
+            // Начальное название - пустая строка
+            model.editor.AnimalName = "";
+            model.editor.AnimalId = 0;
+
+            //  выбранный цвет шкуры животного
+            model.editor.selectedSkinId = 1; 
+
+            //  выбранный вид животного
+            model.editor.selectedKindId = 1; 
+
+            //  выбранное местоположение 
+            model.editor.selectedLocationId = 1; 
+
+            //  выбранные регионы
+            model.editor.selectedRegionsIds.removeAll();
+            model.editor.selectedRegionsIds.push(+1);
+
+            model.editor.captionText("Добавление нового животного");
+
+            // показываем панель - Редактирование
+            model.displaySummary(2);
+        }
+
+
+        // Обработчик клика по кнопке СОХРАНИТЬ
+        //
+        function handleSaveAddedClick() {
+
+            // Скрываем окошко с сообщением пользователю
+            model.errors.shouldShowMessage(false);
+            // Очищает поле сообщения
+            model.errors.messageText("");
+
+            // выводим предупреждение - если не введено имени для животного
+            //
+            if (model.editor.AnimalName.length == 0) {
+
+                // окошко с сообщением пользователю
+                model.errors.shouldShowMessage(true);
+
+                // Очищает поле сообщения
+                model.errors.messageText("<h4>Ошибка:</h4><p>Необходимо ввести имя для животного!</p>");
+
+                // показываем панель - Редактирование / Добавление
+                model.displaySummary(2);
+                return;
+            }
+
+            // выводим предупреждение - если не выбрано ни одного региона
+            //
+            if (model.editor.selectedRegionsIds().length == 0) {
+
+                // окошко с сообщением пользователю
+                model.errors.shouldShowMessage(true);
+
+                // Очищает поле сообщения
+                model.errors.messageText("<h4>Ошибка:</h4><p>Необходимо выбрать как минимум один регион из списка регионов!</p>");
+
+                // показываем панель - Редактирование / Добавление
+                model.displaySummary(2);
+                return;
+            }
+
+            // Готовлю строку из массива выбранных регонов
+            //
+            var regions = [];
+            for (var k = 0; k < model.editor.selectedRegionsIds().length; k++) {
+                regions.push(model.editor.selectedRegionsIds()[k]);
+            }
+
+            // определяем: редактируем или добаляем животное
+            //
+            if (model.editor.AnimalId) {
+
+                // show splash screen
+                model.splashScreen(true);
+
+                // Скрываем окошко с сообщением пользователю
+                model.message.shouldShowMessage(false);
+                // Очищает поле сообщения
+                model.message.messageText("");
+
+                sendAjaxRequest("PUT", function (updatedItem) {
+
+                    // show splash screen
+                    model.splashScreen(true);
+
+                    // getAnimals();
+                    if (model.filter.filterOn)
+                        handleApplyFilterClick();
+                    else
+                        getAnimals();
+
+                    // Вывожу для пользователя подтверждение
+                    //
+                    // окошко с сообщением пользователю
+                    model.message.shouldShowMessage(true);
+
+                    // Очищает поле сообщения
+                    model.message.messageText("Животное: <b>" + model.editor.AnimalName + "</b> - было успешно <b>отредактировано<b>.");
+
+                    // запускаем таймер, автоматически закрывающий поле с текстом сообщения через 9 секунд
+                    //
+                    clearTimeout(model.message.deltime);
+                    model.message.deltime = setTimeout(handleCloseMessageClick, 9000);
+
+                    // показываем панель - Список животных
+                    model.displaySummary(1);
+
+                    // Отображаем 1-ую страницу из списка животных
+                    showPage(1);
+
+                }, null, model.editor.AnimalId,
+                {
+                    AnimalId: model.editor.AnimalId,
+                    AnimalName: model.editor.AnimalName,
+                    SkinId: model.editor.selectedSkinId,
+                    KindId: model.editor.selectedKindId,
+                    LocationId: model.editor.selectedLocationId,
+                    RegIds: regions
+                });
+            }
+            else {
+
+                // show splash screen
+                model.splashScreen(true);
+
+                // Скрываем окошко с сообщением пользователю
+                model.message.shouldShowMessage(false);
+                // Очищает поле сообщения
+                model.message.messageText("");
+
+                sendAjaxRequest("POST", function () {
+
+                    // show splash screen
+                    model.splashScreen(true);
+
+                    // getAnimals();
+                    if (model.filter.filterOn)
+                        handleApplyFilterClick();
+                    else
+                        getAnimals();
+
+                    // Вывожу для пользователя подтверждение
+                    //
+                    // окошко с сообщением пользователю
+                    model.message.shouldShowMessage(true);
+
+                    // Очищает поле сообщения
+                    model.message.messageText("Животное: <b>" + model.editor.AnimalName + "</b> - было успешно <b>добавлено</b> в базу данных.");
+
+                    // запускаем таймер, автоматически закрывающий поле с текстом сообщения через 9 секунд
+                    //
+                    clearTimeout(model.message.deltime);
+                    model.message.deltime = setTimeout(handleCloseMessageClick, 9000);
+
+
+                    // показываем панель - Список животных
+                    model.displaySummary(1);
+
+                    // Отображаем 1-ую страницу из списка животных
+                    showPage(1);
+
+                    // hide splash screen
+                    model.splashScreen(false);
+
+                }, null, null, {
+                    AnimalName: model.editor.AnimalName,
+                    SkinId: model.editor.selectedSkinId,
+                    KindId: model.editor.selectedKindId,
+                    LocationId: model.editor.selectedLocationId,
+                    RegIds: regions
+                });
+            }
+        }
+
+
+        //обработчик клика по кнопке ОТМЕНА СОХРАНЕНИЯ
+        //
+        function handleCancelEditingClick() {
+
+            // Скрываем окошко с сообщением пользователю
+            model.errors.shouldShowMessage(false);
+            // Очищает поле сообщения
+            model.errors.messageText("");
+
+            // показываем панель - Список животных
+            model.displaySummary(1);
+
+            // Отображаем 1-ую страницу из списка животных
+            showPage(1);
+        }
+
+
+        // Точка входа
+        //
+        $(document).ready(function () {
+
+            ko.applyBindings(model);
+
+            // show splash screen
+            model.splashScreen(true);
+
+            // Загружаем по одной - вспомогательные таблицы - а затем список животных
+            //
+            getSkins();
+        });
+    </script>
+
+}
+@section Body {
+
+    <!--  Гифка - для анимации загрузки данных -->
+    <div class="loading-overlay" data-bind="visible: model.splashScreen">
+        <img class="centered-overlay" src="@Url.Content("~/Content/30.gif")" />
+    </div>
+
+    <!-----    СЕКЦИЯ:  ----->
+    <!-----------------------  Список животных   ------------------------------>
+
+    <div id="summary" class="section panel panel-primary" data-bind="if: model.displaySummary() == 1">
+        <div class="panel-heading">
+            <span class="my_label">Список животных</span>
+
+            <!--   КНОПКА - для вывода фильтра  -->
+            <button class="btn btn-default btn-sm my_label"
+                    data-bind="click: filterItem">
+                Наложить / снять фильтр
+            </button>
+
+            &nbsp;
+
+            <!--   КНОПКА - для добавления нового животного  -->
+            <button class="btn btn-default btn-sm my_label"
+                    data-bind="click: handleCreateClick">
+                Добавить новое животное
+            </button>
+        </div>
+
+        <div class="panel-body">
+
+            <!-- Текстовое сообщение пользователю об ошибках -->
+            <div class="panel panel-danger" data-bind="visible: model.errors.shouldShowMessage">
+                <div class="my_regions_error">
+
+                    <div class="row">
+                        <!--   Текстовое сообщение пользователю     messageText -->
+                        <div class="col-xs-11">
+                            <span class="my_label" data-bind="html: model.errors.messageText"></span>
+                        </div>
+
+                        <!--   КНОПКА - для закрытия окна сообщения  -->
+                        <div class="my_error_button">
+                            <button class="btn btn-xs btn-danger"
+                                    data-bind="click: handleCloseErrorsMessageClick">
+                                X
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Текстовое описание заданного фильтра  -->
+            <div class="panel panel-danger" data-bind="visible: model.filter.filterOn">
+                <div class="panel-heading" data-bind="html: model.filter.captionText">Фильтрация данных по следующим условиям:</div>
+            </div>
+
+            <!--  Выводим пользователю информацию - сколько животных в БД  -->
+            <div class="panel panel-info" data-bind="visible: !model.filter.filterOn">
+                <div class="panel-heading" data-bind="html: model.amountOfAminals"></div>
+            </div>
+
+            <table class="table table-striped table-hover my_bk_gold">
+                <thead>
+                    <tr>@*<th>ID</th>*@<th>Название</th><th>Цвет шкуры</th><th>Вид</th><th>Местоположение</th><th>Регион</th><th></th></tr>
+                </thead>
+
+                <tbody data-bind="foreach:  model.paging.paginated">
+                    <tr>
+                        @*<td data-bind="text: AnimalId"></td>*@
+                        <td data-bind="text: AnimalName"></td>
+                        <td data-bind="text: SkinColor"></td>
+                        <td data-bind="text: AnimalKind"></td>
+                        <td data-bind="text: LocationName"></td>
+                        <td data-bind="text: RegionsNames"></td>
+                        <td>
+                            <!--   КНОПКА - для редактирования текушего животного  -->
+                            <button class="btn btn-xs btn-primary"
+                                    data-bind="click: editItem">
+                                Изменить
+                            </button>
+
+                            &nbsp;
+
+                            <!--   КНОПКА - для удаления текушего животного  -->
+                            <button class="btn btn-xs btn-danger"
+                                    data-bind="click: removeItem">
+                                Удалить
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Пагинация  -->
+            <nav aria-label="Page navigation" class="my_center">
+                <ul class="pagination" data-bind="foreach: model.paging.pages, enable: model.paging.totalPages!='1'">
+                    <li><a href="#" data-bind="click: showPage( $data )"><span data-bind="text: $data"></span></a></li>
+                </ul>
+            </nav>
+
+        </div>
+
+        <!-- Текстовое сообщение пользователю о событиях добавления / удаления животных -->
+        <div class="panel panel-danger" data-bind="visible: model.message.shouldShowMessage">
+            <div class="my_right">
+
+                <!--   Текстовое сообщение пользователю     messageText -->
+                <span class="my_label" data-bind="html: model.message.messageText"></span>
+
+                <!--   КНОПКА - для закрытия окна сообщения  -->
+                <button class="btn btn-xs btn-danger"
+                        data-bind="click: handleCloseMessageClick">
+                    X
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-----    СЕКЦИЯ:  ----->
+    <!-----------------------  Редактирование животного   ------------------------------>
+
+    <div id="editor" class="section panel panel-primary" data-bind="if: model.displaySummary() == 2">
+        <div class="panel-heading">
+            <span class="my_label" data-bind="text: model.editor.captionText"></span>
+        </div>
+
+        <div class="panel-body form-horizontal">
+
+            <!-- Текстовое сообщение пользователю об ошибках -->
+            <div class="panel panel-danger" data-bind="visible: model.errors.shouldShowMessage">
+                <div class="my_regions_error">
+
+                    <div class="row">
+                        <!--   Текстовое сообщение пользователю     messageText -->
+                        <div class="col-xs-11">
+                            <span class="my_label" data-bind="html: model.errors.messageText"></span>
+                        </div>
+
+                        <!--   КНОПКА - для закрытия окна сообщения  -->
+                        <div class="my_error_button">
+                            <button class="btn btn-xs btn-danger"
+                                    data-bind="click: handleCloseErrorsMessageClick">
+                                X
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Название животного -->
+            <div class="form-group">
+                <label class="col-sm-4 control-label">Название</label>
+                <div class="col-sm-6">
+                    <input class="form-control" data-bind="value: model.editor.AnimalName" />
+                </div>
+            </div>
+
+
+            <!-- SELECT Цвет шкуры животного -->
+            <div class="form-group">
+                <label class="col-sm-4 control-label">Цвет шкуры</label>
+                <div class="col-sm-8">
+                    <select class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-bind="options: skins,
+                       optionsText: 'SkinColor',
+                       optionsValue: 'Id',
+                       value: editor.selectedSkinId"></select>
+                </div>
+            </div>
+
+            <!-- SELECT Вид животного -->
+            <div class="form-group">
+                <label class="col-sm-4 control-label">Вид</label>
+                <div class="col-sm-8">
+                    <select class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-bind="options: kinds,
+                       optionsText: 'AnimalKind',
+                       optionsValue: 'Id',
+                       value: editor.selectedKindId"></select>
+                </div>
+            </div>
+
+            <!-- SELECT Местоположение -->
+            <div class="form-group">
+                <label class="col-sm-4 control-label">Местоположение</label>
+                <div class="col-sm-8">
+
+                    <select class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-bind="options: locations,
+                       optionsText: 'LocationName',
+                       optionsValue: 'Id',
+                       value: editor.selectedLocationId"></select>
+                </div>
+            </div>
+
+            <!-- SELECT Регионы -->
+            <div class="form-group">
+                <label class="col-sm-4 control-label">Регионы</label>
+                <div class="col-sm-8">
+                    <div class="my_regions" data-bind="foreach: regions">
+                        <input type="checkbox" name="chkRegions"
+                               data-bind="checkedValue: Id, checked: model.editor.selectedRegionsIds">
+                        &nbsp;<span data-bind="text: RegionName"></span><br />
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!--   Футер для кнопок добавления / изменения животного -->
+        <div class="panel-footer">
+            <!--   КНОПКА - Сохранить  -->
+            <button class="btn btn-primary"
+                    data-bind="click: handleSaveAddedClick">
+                Сохранить
+            </button>
+
+            &nbsp;
+
+            <!--   КНОПКА - Отменить  -->
+            <button class="btn btn-danger"
+                    data-bind="click: handleCancelEditingClick">
+                Отменить
+            </button>
+        </div>
+    </div>
+
+
+    <!-----    СЕКЦИЯ:  ----->
+    <!-----------------------  Наложение фильтра   ------------------------------>
+
+    <div id="filter" class="section panel panel-primary" data-bind="if: model.displaySummary() == 3">
+        <div class="panel-heading">
+            <span class="my_label">Настройки фильтра для отображаемых животных</span>
+        </div>
+        <div class="panel-body form-horizontal">
+
+            <!-- Текстовое сообщение пользователю об ошибках -->
+            <div class="panel panel-danger" data-bind="visible: model.errors.shouldShowMessage">
+                <div class="my_regions_error">
+
+                    <div class="row">
+                        <!--   Текстовое сообщение пользователю     messageText -->
+                        <div class="col-xs-11">
+                            <span class="my_label" data-bind="html: model.errors.messageText"></span>
+                        </div>
+
+                        <!--   КНОПКА - для закрытия окна сообщения  -->
+                        <div class="my_error_button">
+                            <button class="btn btn-xs btn-danger"
+                                    data-bind="click: handleCloseErrorsMessageClick">
+                                X
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SELECT Цвет шкуры животного -->
+            <div class="form-group">
+                <label class="col-sm-4 control-label">Цвет шкуры</label>
+                <div class="col-sm-8">
+
+                    <!--   Радиокнопка: выбираем все цвета шкуры   -->
+                    <div class="radio">
+                        <label>
+                            <input type="radio" name="skins" value="optNotFilterSkins" data-bind="checked: filter.hasSkinsToFilter">Все цвета шкуры
+                        </label>
+                    </div>
+                    <div class="radio">
+                        <label>
+                            <input type="radio" name="skins" value="optApplyFilterSkins" data-bind="checked: filter.hasSkinsToFilter">Цвет шкуры, выбранный из списка
+                        </label>
+                    </div>
+
+                    <select class="btn btn-default dropdown-toggle my_select" data-toggle="dropdown" data-bind="options: skins,
+                       optionsText: 'SkinColor',
+                       optionsValue: 'Id',
+                       value: filter.selectedSkinId,
+                       enable: filter.hasSkinsToFilter() == 'optApplyFilterSkins'"></select>
+                </div>
+            </div>
+
+            <!-- SELECT Вид животного -->
+            <div class="form-group">
+                <label class="col-sm-4 control-label">Вид животного</label>
+                <div class="col-sm-8">
+                    <!--   Радиокнопка: выбираем все виды животных   -->
+                    <div class="radio">
+                        <label>
+                            <input type="radio" name="kinds" value="optNotFilterKinds" data-bind="checked: filter.hasKindsToFilter">Все виды животных
+                        </label>
+                    </div>
+                    <div class="radio">
+                        <label>
+                            <input type="radio" name="kinds" value="optApplyFilterKinds" data-bind="checked: filter.hasKindsToFilter">Виды животных, выбранные из списка
+                        </label>
+                    </div>
+
+                    <select class="btn btn-default dropdown-toggle my_select" data-toggle="dropdown" data-bind="options: kinds,
+                       optionsText: 'AnimalKind',
+                       optionsValue: 'Id',
+                       value: filter.selectedKindId,
+                       enable: filter.hasKindsToFilter() == 'optApplyFilterKinds'"></select>
+                </div>
+            </div>
+
+            <!-- SELECT Регионы -->
+            <div class="form-group">
+                <label class="col-sm-4 control-label">Регионы</label>
+                <div class="col-sm-8">
+
+                    <!--   Радиокнопка: выбираем все регионы   -->
+                    <div class="radio">
+                        <label>
+                            <input type="radio" name="optradio" value="optNotFilterRegions" data-bind="checked: filter.hasRegionsToFilter">Все регионы
+                        </label>
+                    </div>
+                    <div class="radio">
+                        <label>
+                            <input type="radio" name="optradio" value="optApplyFilterRegions" data-bind="checked: filter.hasRegionsToFilter">Выбранные регионы
+                        </label>
+                    </div>
+
+                    <div class="my_regions" data-bind="foreach: regions, enable: model.filter.hasRegionsToFilter() =='optApplyFilterRegions'">
+                        <input type="checkbox" name="chkFilterRegions"
+                               data-bind="checkedValue: Id, checked: model.filter.selectedRegionsIds">
+                        &nbsp;<span data-bind="text: RegionName"></span><br />
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!--   Футер для фильтра  -->
+        <div class="panel-footer">
+            <!--   КНОПКА - Применить фильтр  -->
+            <button class="btn btn-primary"
+                    data-bind="click: handleApplyFilterClick">
+                Применить фильтр к списку животных
+            </button>
+
+            &nbsp;
+
+            <!--   КНОПКА - Отменить фильтрацию животных  -->
+            <button class="btn btn-danger"
+                    data-bind="click: handleCancelFilterClick">
+                Отменить фильтрацию и вывести всех животных
+            </button>
+        </div>
+
+    </div>
+
+
+    <!-----    СЕКЦИЯ:  ----->
+    <!-----------------------  Подтверждение удаления выбранного животного   ------------------------------>
+
+    <div id="filter" class="section panel panel-primary" data-bind="if: model.displaySummary() == 4">
+        <div class="panel-heading">
+            <span class="my_label">Вы действительно хотите удалить указанное животное:</span>
+        </div>
+
+        <div class="panel-body form-horizontal">
+
+            <!-- Название животного -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Название</label>
+                <div class="col-sm-8">
+                    <input class="form-control" disabled data-bind="value: model.delete.AnimalName" />
+                </div>
+            </div>
+
+            <!-- Цвет шкуры животного -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Цвет шкуры</label>
+                <div class="col-sm-8">
+                    <input class="form-control" disabled data-bind="value: model.delete.SkinColor" />
+                </div>
+            </div>
+
+            <!-- Вид животного -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Вид животного</label>
+                <div class="col-sm-8">
+                    <input class="form-control" disabled data-bind="value: model.delete.AnimalKind" />
+                </div>
+            </div>
+
+            <!-- Местоположение -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Местоположение</label>
+                <div class="col-sm-8">
+                    <input class="form-control" disabled data-bind="value: model.delete.LocationName" />
+                </div>
+            </div>
+
+            <!-- Регионы -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">Регионы</label>
+                <div class="col-sm-8">
+                    <input class="form-control" disabled data-bind="value: model.delete.RegionsNames" />
+                </div>
+            </div>
+
+        </div>
+
+        <!--   Футер для фильтра  -->
+        <div class="panel-footer">
+            <!--   КНОПКА - для подтверждения удаления животного  -->
+            <button class="btn btn-primary"
+                    data-bind="click: handleConfirmDeleteAnimalClick">
+                Удалить животное
+            </button>
+
+            &nbsp;
+
+            <!--   КНОПКА - для отмены удаления животного  -->
+            <button class="btn btn-danger"
+                    data-bind="click: handleCancelDeleteAnimalClick">
+                Отменить удаление
+            </button>
+        </div>
+
+    </div>
+}
