@@ -30,10 +30,10 @@ Take a look at code for <b>SPA</b> project:
 
 <b>Models</b> folder (data models and interfaces): 
 <ul>
-  <li><a href="Models/Animal.cs">Animal.cs</a>,</li>
+  <li><a href="Models/Animals.cs">Animals.cs</a>,</li>
   <li><a href="Models/AnimalsContext.cs">AnimalsContext.cs</a>,</li>
   <li><a href="Models/AnimalsDbInitializer.cs">AnimalsDbInitializer.cs</a>,</li>
-  <li><a href="Models/AnimalRepository.cs">AnimalRepository.cs</a>,</li>
+  <li><a href="Models/AnimalsRepository.cs">AnimalsRepository.cs</a>,</li>
   <li><a href="Models/IRepository.cs">IRepository.cs</a>,</li>
   <li><a href="Models/IUnitOfWork.cs">IUnitOfWork.cs</a>,</li>  
   <li><a href="Models/UnitOfWork.cs">UnitOfWork.cs</a>.</li>
@@ -57,10 +57,19 @@ Take a look at code for <b>Test</b> project:
   <li>Tests for Animals Controller: <a href="Tests/Controllers/AnimalsControllerTest.cs">AnimalsControllerTest.cs</a>,</li>
   <li>Tests for Skins Controller: <a href="Tests/Controllers/SkinsControllerTest.cs">SkinsControllerTest.cs</a>.</li>
 </ul>
+<hr>
 
 <p>Here are some screenshots:</p>
 <p>
-<b>SPA</b> main window:
-<hr>
-<img width="600" src="Screenshots/index.png" alt="main view" />
+<b>Main</b> window (while loading data):
+<br>
+<img width="600" src="Screenshots/MainLoading.png" alt="main view while loading data" />
+
+<p>
+<b>Main</b> window  (data was loaded):
+<br>
+<img width="600" src="Screenshots/Main.png" alt="main view" />
+
+
+
 <hr>
