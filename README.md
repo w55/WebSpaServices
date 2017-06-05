@@ -1,6 +1,6 @@
 # WebSpaServices
 
-<b>SPA</b> ASP.NET <b>Web API 2</b> application using frameworks: <b>Knockout</b>, <b>EntityFramewok</b>, <b>Ninject</b> and <b>Automapper</b> with <b>Unit Tests</b> project included as well.
+<b>SPA</b> ASP.NET <b>Web API 2</b> application using frameworks: <b>Knockout</b>, <b>EntityFramewok</b>, <b>Ninject</b> and <b>Automapper</b> with <b>Unit Tests</b> project using: <b>EntityFramewok</b>, <b>Ninject</b> and <b>Moq</b> included as well.
 <hr>
 Some key code snippets only
 <br>
@@ -62,14 +62,43 @@ Take a look at code for <b>Test</b> project:
 <p>Here are some screenshots:</p>
 <p>
 <b>Main</b> window (while loading data):
-<br>
+<p>
 <img width="600" src="Screenshots/MainLoading.png" alt="main view while loading data" />
+<br>
 
 <p>
 <b>Main</b> window  (data was loaded):
-<br>
+<p>
 <img width="600" src="Screenshots/Main.png" alt="main view" />
+<br>
 
+<p>
+<b>Filter</b> panel screenshot:
+<p>
+<img width="600" src="Screenshots/FilterPanel.png" alt="filter panel" />
+<br>
 
+<p>
+<b>Main</b> window  (data was filtered):
+<p>
+<img width="600" src="Screenshots/Filtered.png" alt="main view with filtered data" />
+<br>
 
+<p>
+<b>Adding Animal</b> panel screenshot:
+<p>
+<img width="600" src="Screenshots/AddingAnimal.png" alt="adding animal panel" />
+<br>
+
+<p>
+<b>Main</b> window  (after animal was edited):
+<p>
+<img width="600" src="Screenshots/MainAfterEditing.png" alt="main view after editing animal" />
+<br>
+
+<p>
+<b>Deleting Animal</b> panel screenshot:
+<p>
+<img width="600" src="Screenshots/DeletingAnimal.png" alt="deleting animal panel" />
+<br>
 <hr>
