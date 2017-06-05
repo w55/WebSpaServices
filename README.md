@@ -1,0 +1,2 @@
+# WebSpaServices
+SPA application
