@@ -35,12 +35,13 @@ Take a look at code for <b>SPA</b> project:
   <li><a href="Models/AnimalsDbInitializer.cs">AnimalsDbInitializer.cs</a>,</li>
   <li><a href="Models/AnimalsRepository.cs">AnimalsRepository.cs</a>,</li>
   <li><a href="Models/IRepository.cs">IRepository.cs</a>,</li>
-  <li><a href="Models/IUnitOfWork.cs">IUnitOfWork.cs</a>,</li>  
-  <li><a href="Models/UnitOfWork.cs">UnitOfWork.cs</a>.</li>
+  <li><a href="Models/IRepositoryFactory.cs">IRepositoryFactory.cs</a>.</li>  
 </ul>
 
 <b>Utils</b> folder: 
 <ul>
+   <li>Profile for Automapper: <a href="Utils/AutomapperProfile.cs">AutomapperProfile.cs</a>,</li>
+   <li>Cache attribute class: <a href="Utils/CacheFilter.cs">CacheFilter.cs</a>,</li>
    <li>Resolver for Ninject: <a href="Utils/NinjectDependencyResolver.cs">NinjectDependencyResolver.cs</a>.</li>
 </ul>
 
