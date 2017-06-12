@@ -10,31 +10,33 @@ using System.Data.Entity;
 using System.Web.Http.Description;
 using AutoMapper;
 using Ninject;
+using WebSpaServices.Utils;
 
 namespace WebSpaServices.Controllers
 {
     public class AnimalsController : ApiController
     {
-        IUnitOfWork uow;
+        private readonly IRepositoryFactory _repoFactory;
 
         // Конструкторы
         //
         #region AnimalsController()
 
-        public AnimalsController()
+        public AnimalsController(IRepositoryFactory repositoryFactory)
         {
-            IKernel ninjectKernel = new StandardKernel();
-            ninjectKernel.Bind<IUnitOfWork>().To<UnitOfWork>().WithConstructorArgument("context", new AnimalsContext());
-            uow = ninjectKernel.Get<IUnitOfWork>();
+            _repoFactory = repositoryFactory;
         }
 
-        public AnimalsController(IUnitOfWork unit)
+        static AnimalsController()
         {
-            uow = unit;
+            //
+            //----  настройка профиля для методов автомаппера  -------
+            //
+            Mapper.Initialize(cfg => cfg.AddProfile(new AutomapperProfile()));
         }
 
         #endregion AnimalsController()
-        
+
 
         //
         //-------------------  CRUD-операции над животными   ----------------------------
@@ -42,19 +44,14 @@ namespace WebSpaServices.Controllers
         #region GetAnimals()
 
         // GET api/animals
-        //
+        //        
         public IHttpActionResult GetAnimals()
         {
             Trace.WriteLine("--- GetAnimals() ---");
 
             try
             {
-                var animals = uow.Animals.GetAll().Include(a => a.Regions).OrderBy(a => a.AnimalName).ToList();
-                
-                // Настройка AutoMapper
-                Mapper.Initialize(cfg =>
-                    cfg.CreateMap<Animal, AnimalLight>()
-                        .ForMember(dest => dest.RegIds, opt => opt.MapFrom(src => src.Regions.Select(r => r.Id))));
+                var animals = _repoFactory.CreateAnimalRepository().GetAll().Include(a => a.Regions).OrderBy(a => a.AnimalName).ToList();
 
                 // сопоставление
                 var animalsLight = Mapper.Map<List<Animal>, IEnumerable<AnimalLight>>(animals);
@@ -81,7 +78,7 @@ namespace WebSpaServices.Controllers
         {
             Trace.WriteLine("--- GetAnimal() ---");
 
-            Animal animal = uow.Animals.GetAll().Include(a => a.Regions).FirstOrDefault(b => b.AnimalId == id);
+            Animal animal = _repoFactory.CreateAnimalRepository().GetAll().Include(a => a.Regions).FirstOrDefault(b => b.AnimalId == id);
 
             if (animal == null)
             {
@@ -90,11 +87,6 @@ namespace WebSpaServices.Controllers
 
             try
             {
-                // Настройка AutoMapper
-                Mapper.Initialize(cfg =>
-                    cfg.CreateMap<Animal, AnimalLight>()
-                        .ForMember(dest => dest.RegIds, opt => opt.MapFrom(src => src.Regions.Select(r => r.Id))));
-
                 // сопоставление
                 var animalLight = Mapper.Map<Animal, AnimalLight>(animal);
 
@@ -125,7 +117,7 @@ namespace WebSpaServices.Controllers
                 return BadRequest();
             }
 
-            if (uow.Animals.GetAll().Count(a => a.AnimalName.Equals(animalLight.AnimalName, StringComparison.InvariantCultureIgnoreCase)) > 0)
+            if (_repoFactory.CreateAnimalRepository().GetAll().Count(a => a.AnimalName.Equals(animalLight.AnimalName, StringComparison.InvariantCultureIgnoreCase)) > 0)
             {
                 ModelState.AddModelError("animalLight", "Ошибка: животное с таким названием - уже существует в списке животных!");
             }
@@ -142,19 +134,15 @@ namespace WebSpaServices.Controllers
 
             try
             {
-                // Настройка AutoMapper
-                Mapper.Initialize(cfg =>
-                    cfg.CreateMap<AnimalLight, Animal>()
-                    .ForMember(dest => dest.Regions, opt => opt.Ignore()));
-
                 // сопоставление
                 Animal animal = Mapper.Map<AnimalLight, Animal>(animalLight);
 
-                var regions = uow.Regions.GetAll().Where(r => animalLight.RegIds.Contains(r.Id)).ToList<Region>();
+                var regions = _repoFactory.CreateRegionRepository().GetAll().Where(r => animalLight.RegIds.Contains(r.Id)).ToList<Region>();
+
                 animal.Regions = regions;
 
-                uow.Animals.Create(animal);
-                uow.Save();
+                _repoFactory.CreateAnimalRepository().Create(animal);
+                _repoFactory.CreateAnimalRepository().Save();
 
                 animalLight.AnimalId = animal.AnimalId;
 
@@ -187,7 +175,7 @@ namespace WebSpaServices.Controllers
                 return BadRequest();
             }
 
-            if (uow.Animals.GetAll().Count(a => a.AnimalId != animalLight.AnimalId &&
+            if (_repoFactory.CreateAnimalRepository().GetAll().Count(a => a.AnimalId != animalLight.AnimalId &&
                 a.AnimalName.Equals(animalLight.AnimalName, StringComparison.InvariantCultureIgnoreCase)) > 0)
             {
                 ModelState.AddModelError("animalLight", "Ошибка: другое животное с таким названием - уже существует в списке животных!");
@@ -205,24 +193,24 @@ namespace WebSpaServices.Controllers
 
             try
             {
-                Animal animal = uow.Animals.GetAll().Include(a => a.Skin).Include(a => a.Kind).Include(a => a.Location).Include(a => a.Regions)
+                Animal animal = _repoFactory.CreateAnimalRepository().GetAll().Include(a => a.Skin).Include(a => a.Kind).Include(a => a.Location).Include(a => a.Regions)
                     .FirstOrDefault(a => a.AnimalId == animalLight.AnimalId);
 
                 // Изменяем поля для выбранного животного - на новые
                 //
                 if (id == animal.AnimalId)
                 {
-                    var regions = uow.Regions.GetAll().Where(r => animalLight.RegIds.Contains(r.Id)).ToList<Region>();
+                    var regions = _repoFactory.CreateRegionRepository().GetAll().Where(r => animalLight.RegIds.Contains(r.Id)).ToList<Region>();
                     animal.Regions = regions;
 
-                    animal.Skin = uow.Skins.GetAll().FirstOrDefault(s => s.Id == animalLight.SkinId);
-                    animal.Kind = uow.Kinds.GetAll().FirstOrDefault(s => s.Id == animalLight.KindId);
-                    animal.Location = uow.Locations.GetAll().FirstOrDefault(s => s.Id == animalLight.LocationId);
+                    animal.Skin = _repoFactory.CreateSkinRepository().GetAll().FirstOrDefault(s => s.Id == animalLight.SkinId);
+                    animal.Kind = _repoFactory.CreateKindRepository().GetAll().FirstOrDefault(s => s.Id == animalLight.KindId);
+                    animal.Location = _repoFactory.CreateLocationRepository().GetAll().FirstOrDefault(s => s.Id == animalLight.LocationId);
 
                     animal.AnimalName = animalLight.AnimalName;
 
-                    uow.Animals.Update(animal);
-                    uow.Save();
+                    _repoFactory.CreateAnimalRepository().Update(animal);
+                    _repoFactory.CreateAnimalRepository().Save();
 
                     animalLight.AnimalId = animal.AnimalId;
                 }
@@ -254,7 +242,7 @@ namespace WebSpaServices.Controllers
         {
             Trace.WriteLine("--- DeleteAnimal(" + id + ") ---");
 
-            Animal animal = uow.Animals.GetAll().Include(a => a.Regions).FirstOrDefault(a => a.AnimalId == id);
+            Animal animal = _repoFactory.CreateAnimalRepository().GetAll().Include(a => a.Regions).FirstOrDefault(a => a.AnimalId == id);
 
             if (animal == null)
             {
@@ -263,16 +251,12 @@ namespace WebSpaServices.Controllers
 
             try
             {
-                // Настройка AutoMapper
-                Mapper.Initialize(cfg =>
-                    cfg.CreateMap<Animal, AnimalLight>()
-                        .ForMember(dest => dest.RegIds, opt => opt.MapFrom(src => src.Regions.Select(r => r.Id))));
-
                 // сопоставление
                 var animalLight = Mapper.Map<Animal, AnimalLight>(animal);
 
-                uow.Animals.Delete(animal.AnimalId);
-                uow.Save();
+                _repoFactory.CreateAnimalRepository().Delete(animal.AnimalId);
+                // uow.Save();
+                _repoFactory.CreateAnimalRepository().Save();
 
                 Trace.WriteLine("--- DeleteAnimal(): " + animal + " - was deleted !!! ---");
 
@@ -307,7 +291,7 @@ namespace WebSpaServices.Controllers
                 return BadRequest();
             }
 
-            var animals = uow.Animals.GetAll().Include(a => a.Skin).Include(a => a.Kind).Include(a => a.Regions);
+            var animals = _repoFactory.CreateAnimalRepository().GetAll().Include(a => a.Skin).Include(a => a.Kind).Include(a => a.Regions);
 
             if (filter.SkinId > 0)
                 animals = animals.Where(a => a.SkinId == filter.SkinId);
@@ -324,11 +308,6 @@ namespace WebSpaServices.Controllers
 
             try
             {
-                // Настройка AutoMapper
-                Mapper.Initialize(cfg =>
-                    cfg.CreateMap<Animal, AnimalLight>()
-                        .ForMember(dest => dest.RegIds, opt => opt.MapFrom(src => src.Regions.Select(r => r.Id))));
-
                 // сопоставление
                 var animalsLight = Mapper.Map<List<Animal>, IEnumerable<AnimalLight>>(animalsFiltered);
                 return Ok(animalsLight);
@@ -353,9 +332,10 @@ namespace WebSpaServices.Controllers
         protected override void Dispose(bool disposing)
         {
             Trace.WriteLine("--- Animals: Dispose(" + disposing + ") ---");
+
             if (disposing)
             {
-                uow.Dispose();
+                _repoFactory.CreateAnimalRepository().Dispose();
             }
             base.Dispose(disposing);
         }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Entity;
+using System.Diagnostics;
 using System.Linq;
 using System.Web;
 
@@ -41,7 +42,45 @@ namespace WebSpaServices.Models
         {
             Animal animal = db.Animals.Find(id);
             if (animal != null)
+            {
                 db.Animals.Remove(animal);
+            }
+        }
+
+        //
+        //---------------------------    After adding Ninject Factory: Save method        --------------------------------
+        //
+        /// <summary>
+        /// Метод сохраниния
+        /// </summary>
+        public void Save()
+        {
+            db.SaveChanges();
+        }
+
+        //
+        //---------------------------    After adding Ninject Factory: Dispose  pattern        --------------------------------
+        //
+        private bool disposed = false;
+
+        public virtual void Dispose(bool disposing)
+        {
+            Trace.WriteLine("--- AnimalRepository.Dispose(" + disposing + ") ---");
+
+            if (!this.disposed)
+            {
+                if (disposing)
+                {
+                    // db.Dispose();
+                }
+                this.disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 
@@ -83,6 +122,42 @@ namespace WebSpaServices.Models
             if (skin != null)
                 db.Skins.Remove(skin);
         }
+
+        //
+        //---------------------------    After adding Ninject Factory: Save method        --------------------------------
+        //
+        /// <summary>
+        /// Метод сохраниния
+        /// </summary>
+        public void Save()
+        {
+            db.SaveChanges();
+        }
+
+        //
+        //---------------------------    After adding Ninject Factory: Dispose  pattern        --------------------------------
+        //
+        private bool disposed = false;
+
+        public virtual void Dispose(bool disposing)
+        {
+            Trace.WriteLine("--- SkinRepository.Dispose(" + disposing + ") ---");
+
+            if (!this.disposed)
+            {
+                if (disposing)
+                {
+                    // db.Dispose();
+                }
+                this.disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
     }
 
 
@@ -122,6 +197,42 @@ namespace WebSpaServices.Models
             Kind kind = db.Kinds.Find(id);
             if (kind != null)
                 db.Kinds.Remove(kind);
+        }
+
+        //
+        //---------------------------    After adding Ninject Factory: Save method        --------------------------------
+        //
+        /// <summary>
+        /// Метод сохраниния
+        /// </summary>
+        public void Save()
+        {
+            db.SaveChanges();
+        }
+
+        //
+        //---------------------------    After adding Ninject Factory: Dispose  pattern        --------------------------------
+        //
+        private bool disposed = false;
+
+        public virtual void Dispose(bool disposing)
+        {
+            Trace.WriteLine("--- KindRepository.Dispose(" + disposing + ") ---");
+
+            if (!this.disposed)
+            {
+                if (disposing)
+                {
+                    // db.Dispose();
+                }
+                this.disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 
@@ -163,6 +274,42 @@ namespace WebSpaServices.Models
             if (location != null)
                 db.Locations.Remove(location);
         }
+
+        //
+        //---------------------------    After adding Ninject Factory: Save method        --------------------------------
+        //
+        /// <summary>
+        /// Метод сохраниния
+        /// </summary>
+        public void Save()
+        {
+            db.SaveChanges();
+        }
+
+        //
+        //---------------------------    After adding Ninject Factory: Dispose  pattern        --------------------------------
+        //
+        private bool disposed = false;
+
+        public virtual void Dispose(bool disposing)
+        {
+            Trace.WriteLine("--- LocationRepository.Dispose(" + disposing + ") ---");
+
+            if (!this.disposed)
+            {
+                if (disposing)
+                {
+                    // db.Dispose();
+                }
+                this.disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
     }
 
 
@@ -202,6 +349,42 @@ namespace WebSpaServices.Models
             Region region = db.Regions.Find(id);
             if (region != null)
                 db.Regions.Remove(region);
+        }
+
+        //
+        //---------------------------    After adding Ninject Factory: Save method        --------------------------------
+        //
+        /// <summary>
+        /// Метод сохраниния
+        /// </summary>
+        public void Save()
+        {
+            db.SaveChanges();
+        }
+
+        //
+        //---------------------------    After adding Ninject Factory: Dispose  pattern        --------------------------------
+        //
+        private bool disposed = false;
+
+        public virtual void Dispose(bool disposing)
+        {
+            Trace.WriteLine("--- RegionRepository.Dispose(" + disposing + ") ---");
+
+            if (!this.disposed)
+            {
+                if (disposing)
+                {
+                    // db.Dispose();
+                }
+                this.disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 

@@ -37,7 +37,9 @@ namespace WebSpaServices.Tests.Controllers
         Mock<IRepository<Region>> mockRegion;
         Mock<IRepository<Animal>> mockAnimal;
 
-        Mock<IUnitOfWork> mockUoW;
+        // private readonly IRepositoryFactory _repoFactory;
+        //
+        Mock<IRepositoryFactory> mockFactory;
 
         #endregion class members
 
@@ -177,19 +179,19 @@ namespace WebSpaServices.Tests.Controllers
 
             #endregion Setup MOQs
 
-            #region Setup mockUoW
+            #region Setup mockFactory
 
-            mockUoW = new Mock<IUnitOfWork>();
+            mockFactory = new Mock<IRepositoryFactory>();
 
-            mockUoW.Setup<IRepository<Skin>>(m => m.Skins).Returns(mockSkin.Object);
-            mockUoW.Setup<IRepository<Kind>>(m => m.Kinds).Returns(mockKind.Object);
-            mockUoW.Setup<IRepository<Location>>(m => m.Locations).Returns(mockLocation.Object);
-            mockUoW.Setup<IRepository<Region>>(m => m.Regions).Returns(mockRegion.Object);
-            mockUoW.Setup<IRepository<Animal>>(m => m.Animals).Returns(mockAnimal.Object);
+            mockFactory.Setup<IRepository<Skin>>(m => m.CreateSkinRepository()).Returns(mockSkin.Object);
+            mockFactory.Setup<IRepository<Kind>>(m => m.CreateKindRepository()).Returns(mockKind.Object);
+            mockFactory.Setup<IRepository<Location>>(m => m.CreateLocationRepository()).Returns(mockLocation.Object);
+            mockFactory.Setup<IRepository<Region>>(m => m.CreateRegionRepository()).Returns(mockRegion.Object);
+            mockFactory.Setup<IRepository<Animal>>(m => m.CreateAnimalRepository()).Returns(mockAnimal.Object);
 
-            #endregion Setup mockUoW
-
-            controller = new AnimalsController(mockUoW.Object);
+            #endregion Setup mockFactory
+            
+            controller = new AnimalsController(mockFactory.Object);
         }
 
         #endregion TestInitialize for test methods
@@ -467,7 +469,7 @@ namespace WebSpaServices.Tests.Controllers
                 && a.SkinId == animalLight.SkinId
                 && a.Regions.Count() == animalLight.RegIds.Count)));
 
-            mockUoW.Verify(m => m.Save());
+            mockAnimal.Verify(m => m.Save());
         }
 
 
@@ -735,7 +737,7 @@ namespace WebSpaServices.Tests.Controllers
 
             // Assert
             mockAnimal.Verify(m => m.Update(It.Is<Animal>(a => a.AnimalId == animalLight.AnimalId)));
-            mockUoW.Verify(m => m.Save());
+            mockAnimal.Verify(m => m.Save());
         }
 
 
@@ -953,7 +955,7 @@ namespace WebSpaServices.Tests.Controllers
 
             // Assert
             mockAnimal.Verify(m => m.Delete(DeletedAnimalLight().AnimalId));
-            mockUoW.Verify(m => m.Save());
+            mockAnimal.Verify(m => m.Save());
         }
 
 

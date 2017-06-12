@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Web.Http;
 using WebSpaServices.Models;
+using WebSpaServices.Utils;
 
 namespace WebSpaServices.Controllers
 {
@@ -25,7 +26,7 @@ namespace WebSpaServices.Controllers
         //
         //---------------------------    GET: api/locations       --------------------------------
         //
-        // [Route("api/animals/locations")]
+        [CacheFilter(TimeDuration = 600)]
         public IHttpActionResult GetLocations()
         {
             Trace.WriteLine("--- GetLocations() ---");
@@ -38,7 +39,10 @@ namespace WebSpaServices.Controllers
         protected override void Dispose(bool disposing)
         {
             Trace.WriteLine("--- Locations: Dispose(" + disposing + ") ---");
-            if (disposing) { }
+            if (disposing)
+            {
+                repo.Dispose();
+            }
             base.Dispose(disposing);
         }
     }
